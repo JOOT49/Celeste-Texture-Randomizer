@@ -6,20 +6,33 @@ from tkinter import ttk
 import urllib.request
 import zipfile
 import shutil
+import threading
 
 # URL and filename for the Celeste graphics dump
 graphics_dump_url = "https://www.dropbox.com/scl/fi/tvr8hafluov3no8tmmpzm/Celeste-Graphics-Dump-v1400.zip?rlkey=oeb5tlngtftl9p4wb39rrnpg4&st=r2ku2zbd&dl=1"
 graphics_dump_filename = "Celeste Graphics Dump v1400.zip"
 
-def download_graphics_dump(download_path):
+def download_graphics_dump(download_path, progress_var, progress_bar, status_label):
     dump_path = os.path.join(download_path, graphics_dump_filename)
-    urllib.request.urlretrieve(graphics_dump_url, dump_path)
+    
+    def report_hook(count, block_size, total_size):
+        progress = int(count * block_size * 100 / total_size)
+        progress_var.set(progress)
+        progress_bar.update()
+        status_label.config(text=f"Downloading Graphics: {progress}%")
+        root.update_idletasks()
+    
+    urllib.request.urlretrieve(graphics_dump_url, dump_path, reporthook=report_hook)
+    status_label.config(text="Extracting Graphics...")
+    root.update_idletasks()
     return dump_path
 
-def unzip_graphics_dump(zip_path, extract_to):
+def unzip_graphics_dump(zip_path, extract_to, progress_var, progress_bar, status_label):
     with zipfile.ZipFile(zip_path, 'r') as zip_ref:
         zip_ref.extractall(extract_to)
     os.remove(zip_path)  # Remove the zip file after extraction
+    status_label.config(text="Randomizing Graphics...")
+    root.update_idletasks()
 
 def create_everest_yaml(mod_folder_path):
     yaml_content = """- Name: Celeste Randomized Textures
@@ -35,12 +48,12 @@ def package_mod(mod_folder_path):
     shutil.make_archive(mod_folder_path, 'zip', mod_folder_path)
     shutil.rmtree(mod_folder_path)  # Clean up the mod folder after zipping
 
-def swap_file_names_in_directory(directory_path, num_times, progress_var, progress_bar):
+def swap_file_names_in_directory(directory_path, num_times, progress_var, progress_bar, status_label):
     for _ in range(num_times):
         total_files = sum([len(files) for _, _, files in os.walk(directory_path)])
         processed_files = 0
         
-        for root, _, files in os.walk(directory_path):
+        for root_dir, _, files in os.walk(directory_path):
             if files:
                 shuffled_names = files[:]
                 random.shuffle(shuffled_names)
@@ -49,18 +62,19 @@ def swap_file_names_in_directory(directory_path, num_times, progress_var, progre
                 temp_names = {}
                 for original, shuffled in zip(files, shuffled_names):
                     temp_names[original] = f"{shuffled}.temp"
-                    os.rename(os.path.join(root, original), os.path.join(root, temp_names[original]))
+                    os.rename(os.path.join(root_dir, original), os.path.join(root_dir, temp_names[original]))
                 
                 # Rename to final shuffled names
                 for original, shuffled in zip(files, shuffled_names):
-                    os.rename(os.path.join(root, temp_names[original]), os.path.join(root, shuffled))
+                    os.rename(os.path.join(root_dir, temp_names[original]), os.path.join(root_dir, shuffled))
                     
                 # Update progress
                 processed_files += len(files)
                 progress_var.set(processed_files / total_files * 100)
                 progress_bar.update()
 
-    messagebox.showinfo("Complete", "Textures have been randomized and the mod has been created successfully!")
+    status_label.config(text="Compressing Graphics...")
+    root.update_idletasks()
 
 def start_randomization():
     mod_directory_path = path_entry.get()
@@ -78,39 +92,50 @@ def start_randomization():
     progress_var.set(0)
     progress_bar.update()
 
-    # Step 1: Download the graphics dump
-    dump_zip_path = download_graphics_dump(mod_directory_path)
+    def run():
+        try:
+            # Step 1: Download the graphics dump
+            dump_zip_path = download_graphics_dump(mod_directory_path, progress_var, progress_bar, status_label)
 
-    # Step 2: Unzip the graphics dump
-    dump_folder_path = os.path.join(mod_directory_path, "celeste_graphics")
-    unzip_graphics_dump(dump_zip_path, dump_folder_path)
+            # Step 2: Unzip the graphics dump
+            dump_folder_path = os.path.join(mod_directory_path, "celeste_graphics")
+            unzip_graphics_dump(dump_zip_path, dump_folder_path, progress_var, progress_bar, status_label)
 
-    # Step 3: Randomize the file names
-    swap_file_names_in_directory(dump_folder_path, num_times, progress_var, progress_bar)
+            # Step 3: Randomize the file names
+            swap_file_names_in_directory(dump_folder_path, num_times, progress_var, progress_bar, status_label)
 
-    # Step 4: Create the mod folder structure
-    mod_folder_path = os.path.join(mod_directory_path, "Celeste_Randomized_Textures")
-    os.makedirs(mod_folder_path, exist_ok=True)
-    create_everest_yaml(mod_folder_path)
+            # Step 4: Create the mod folder structure
+            mod_folder_path = os.path.join(mod_directory_path, "Celeste_Randomized_Textures")
+            os.makedirs(mod_folder_path, exist_ok=True)
+            create_everest_yaml(mod_folder_path)
 
-    # Step 5: Move the randomized textures to the mod folder
-    for item in os.listdir(dump_folder_path):
-        source = os.path.join(dump_folder_path, item)
-        destination = os.path.join(mod_folder_path, item)
-        if os.path.isdir(source):
-            shutil.move(source, destination)
-        else:
-            shutil.move(source, destination)
+            # Step 5: Move the randomized textures to the mod folder
+            for item in os.listdir(dump_folder_path):
+                source = os.path.join(dump_folder_path, item)
+                destination = os.path.join(mod_folder_path, item)
+                if os.path.isdir(source):
+                    shutil.move(source, destination)
+                else:
+                    shutil.move(source, destination)
 
-    # Step 6: Delete the celeste_graphics folder
-    shutil.rmtree(dump_folder_path)
+            # Step 6: Package everything into a zip file
+            package_mod(mod_folder_path)
 
-    # Step 7: Package everything into a zip file
-    package_mod(mod_folder_path)
+            # Ensure completion message after deletion
+            status_label.config(text="Cleaning Up...")
+            shutil.rmtree(dump_folder_path)  # Remove the "celeste_graphics" folder after use
+            root.update_idletasks()
+
+            messagebox.showinfo("Complete", "Textures have been randomized and the mod has been created successfully!")
+
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+
+    threading.Thread(target=run).start()
 
 # Set up the GUI
 root = tk.Tk()
-root.title("Celeste Texture Randomizer")
+root.title("Celeste Mod Randomizer")
 
 # Celeste-themed colors
 bg_color = "#1d1f33"
@@ -144,10 +169,16 @@ progress_var = tk.DoubleVar()
 progress_bar = ttk.Progressbar(frame3, variable=progress_var, maximum=100, style="TProgressbar")
 progress_bar.pack(fill="x", padx=10)
 
-# Go Button
+# Status Label
 frame4 = tk.Frame(root, bg=bg_color)
 frame4.pack(pady=10)
-tk.Button(frame4, text="Go", command=start_randomization, bg=highlight_color, fg=fg_color, font=("Fixedsys", 12)).pack()
+status_label = tk.Label(frame4, text="Waiting...", fg=fg_color, bg=bg_color, font=("Fixedsys", 12))
+status_label.pack()
+
+# Go Button
+frame5 = tk.Frame(root, bg=bg_color)
+frame5.pack(pady=10)
+tk.Button(frame5, text="Go", command=start_randomization, bg=highlight_color, fg=fg_color, font=("Fixedsys", 12)).pack()
 
 # Customize the progress bar style for the Celeste theme
 style = ttk.Style()
