@@ -1,0 +1,3 @@
+([('Randomizer',
+   '/Users/Joshua/Documents/Other/Celeste/FINAL Randomizer/dist/Randomizer',
+   'EXECUTABLE')],)
