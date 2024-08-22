@@ -110,7 +110,7 @@ def start_randomization():
 
 # Set up the GUI
 root = tk.Tk()
-root.title("Celeste Mod Randomizer")
+root.title("Celeste Texture Randomizer")
 
 # Celeste-themed colors
 bg_color = "#1d1f33"
