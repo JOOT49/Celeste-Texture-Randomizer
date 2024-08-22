@@ -1,5 +1,4 @@
-('/Users/Joshua/Documents/Other/Celeste/FINAL '
- 'Randomizer/build/Randomizer/PYZ-00.pyz',
+('/Users/Joshua/Documents/Other/Celeste/Celeste-Texture-Randomizer/build/Randomizer/PYZ-00.pyz',
  [('_compat_pickle',
    '/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/_compat_pickle.py',
    'PYMODULE'),
