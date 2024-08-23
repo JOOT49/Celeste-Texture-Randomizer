@@ -14,7 +14,7 @@ A mod for Celeste that randomizes every texture (within it's directory)
 
 ## Installation
 
-This is a self contained .exe file, double click the app to open it. Windows may flag it as malware, check the sourcecode your self, its a single python script. 
+This is a self contained .exe file, double click the app to open it. Windows may flag it as malware, check the source code yourself, its a single python script. 
 
 To install the mod, take the packaged zip folder and place it into Everest's "mods" folder. 
 
@@ -25,15 +25,15 @@ To install the mod, take the packaged zip folder and place it into Everest's "mo
 
 
 
-## Deployment
+## Building
 
-To deploy this project run
+To build this project run
 
 ```bash
   python3 randomizer.py
 ```
 
-or package it yourself with
+or make it an executable yourself with
 
 ```bash
   pyinstaller --onefile --windowed Randomizer.py
